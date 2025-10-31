@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Truck Runner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="loop-wrapper" id="loop-wrapper">
+    <!-- Background elements -->
+    <div class="mountain"></div>
+    <div class="hill"></div>
+    <div class="tree"></div>
+    <div class="tree"></div>
+    <div class="tree"></div>
+
+    <!-- Obstacles -->
+    <div id="obstacles-container"></div>
+
+    <!-- Truck -->
+    <div class="truck-wrapper" id="truck-wrapper">
+      <div class="truck"></div>
+      <div class="wheels"></div>
+    </div>
+
+    <!-- Score -->
+    <div id="score">Score: 0</div>
+
+    <!-- Overlay / Banana API -->
+    <div id="overlay">
+      <h1>Truck Runner</h1>
+      <p>Dodge debris on the road!</p>
+      <button id="startBtn">Start Game</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
