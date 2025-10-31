@@ -1,13 +1,70 @@
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAjpAGju43D4gxe5rmWCU3ubS87_i6rnIc",
+  authDomain: "truck-runner.firebaseapp.com",
+  projectId: "truck-runner",
+  storageBucket: "truck-runner.firebasestorage.app",
+  messagingSenderId: "5012366741",
+  appId: "1:5012366741:web:98be4db0150851023b029c",
+  measurementId: "G-Y6701WR63E"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// Game elements
 const truckWrapper = document.getElementById('truck-wrapper');
 const obstaclesContainer = document.getElementById('obstacles-container');
 const scoreDisplay = document.getElementById('score');
 const loopWrapper = document.getElementById('loop-wrapper');
+const authButton = document.getElementById('auth-button');
+const userInfo = document.getElementById('user-info');
+const userAvatar = document.getElementById('user-avatar');
+const userName = document.getElementById('user-name');
 
 let score = 0;
 let isJumping = false;
 let isGameOver = false;
 let gameStarted = false;
 
+// Auth state observer
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    authButton.textContent = 'Switch Account';
+    userInfo.style.display = 'block';
+    userAvatar.src = user.photoURL;
+    userName.textContent = user.displayName;
+  } else {
+    authButton.textContent = 'Sign In';
+    userInfo.style.display = 'none';
+  }
+});
+
+// Auth button handler
+authButton.addEventListener('click', async () => {
+  if (auth.currentUser) {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  }
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    console.error('Error signing in:', error);
+  }
+});
+
+// Game initialization
 const obstacles = [];
 const obstacleSpeed = 8;
 let backgroundPhase = 0;
@@ -18,28 +75,27 @@ document.getElementById('startBtn').addEventListener('click', () => {
 });
 
 function startGame() {
+  if (!auth.currentUser) {
+    alert('Please sign in to play!');
+    return;
+  }
+  
   gameStarted = true;
-
-  // Start spawning obstacles
+  score = 0;
+  scoreDisplay.textContent = 'Score: 0';
   scheduleNextObstacle();
-
-  // Start moving obstacles
   requestAnimationFrame(moveObstacles);
 
-  // Score & events
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !isJumping && !isGameOver && gameStarted) jump();
+  });
+
   setInterval(() => {
     if (!isGameOver && gameStarted) {
       score++;
       scoreDisplay.textContent = 'Score: ' + score;
-
-      if (score % 200 === 0) updateBackgroundPhase();
     }
   }, 200);
-
-  // Jump listener
-  document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && !isJumping && !isGameOver && gameStarted) jump();
-  });
 }
 
 function jump() {
@@ -51,12 +107,11 @@ function jump() {
   }, 600);
 }
 
-// ----------------- Obstacles -----------------
 function spawnObstacle() {
   const types = [
     { type: 'tire', height: 30, width: 30 },
     { type: 'rock', height: 25, width: 35 },
-    { type: 'debris', height: 20 + Math.floor(Math.random() * 20), width: 20 + Math.floor(Math.random() * 20) }
+    { type: 'debris', height: 20 + Math.random() * 20, width: 20 + Math.random() * 20 }
   ];
   const chosen = types[Math.floor(Math.random() * types.length)];
 
@@ -66,7 +121,10 @@ function spawnObstacle() {
   obs.style.width = chosen.width + 'px';
   obs.style.left = '600px';
   obs.style.bottom = '0px';
-  if (chosen.type === 'debris') obs.style.transform = `rotate(${Math.floor(Math.random() * 30 - 15)}deg)`;
+  
+  if (chosen.type === 'debris') {
+    obs.style.transform = `rotate(${Math.random() * 30 - 15}deg)`;
+  }
 
   obstaclesContainer.appendChild(obs);
   obstacles.push(obs);
@@ -75,14 +133,12 @@ function spawnObstacle() {
 function scheduleNextObstacle() {
   if (isGameOver) return;
   if (gameStarted) spawnObstacle();
-  const nextIn = 1000 + Math.random() * 1000;
-  setTimeout(scheduleNextObstacle, nextIn);
+  setTimeout(scheduleNextObstacle, 1000 + Math.random() * 1000);
 }
 
 function moveObstacles() {
   if (isGameOver) return;
-
-  if (!gameStarted) { // Pause movement
+  if (!gameStarted) {
     requestAnimationFrame(moveObstacles);
     return;
   }
@@ -103,52 +159,61 @@ function moveObstacles() {
   requestAnimationFrame(moveObstacles);
 }
 
-// ----------------- Collision -----------------
 function isColliding(truck, obs) {
   const t = truck.getBoundingClientRect();
   const o = obs.getBoundingClientRect();
   return !(t.top > o.bottom || t.bottom < o.top || t.right < o.left || t.left > o.right);
 }
 
-// ----------------- Game Over -----------------
+async function saveScore() {
+  if (!auth.currentUser) return;
+  
+  try {
+    await addDoc(collection(db, "scores"), {
+      userId: auth.currentUser.uid,
+      userName: auth.currentUser.displayName,
+      score: score,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Error saving score:", e);
+  }
+}
+
 function gameOver() {
   if (isGameOver) return;
   isGameOver = true;
-
-  // Freeze everything
   gameStarted = false;
-  freezeAnimations();
-
-  // Trigger Banana API
-  pauseForBananaAPI();
-}
-function freezeAnimations() {
-  // Pause CSS animations globally
-  document.querySelectorAll('*').forEach(el => {
-    el.style.animationPlayState = 'paused';
-  });
-}
-
-
-
-// ----------------- Background -----------------
-function updateBackgroundPhase() {
-  backgroundPhase = (backgroundPhase + 1) % 4;
-  let gradient;
-  switch (backgroundPhase) {
-    case 0: gradient = 'linear-gradient(to top, #87ceeb, #fff)'; break; // morning
-    case 1: gradient = 'linear-gradient(to top, #fffacd, #ffff00)'; break; // afternoon
-    case 2: gradient = 'linear-gradient(to top, #ff4500, #ffa500)'; break; // evening
-    case 3: gradient = 'linear-gradient(to top, #00008b, #000000)'; break; // night
+  
+  if (auth.currentUser) {
+    saveScore();
   }
-  document.body.style.transition = 'background 4s linear';
-  document.body.style.background = gradient;
+
+  const gameOverScreen = document.createElement('div');
+  gameOverScreen.id = 'game-over-screen';
+  gameOverScreen.style.position = 'absolute';
+  gameOverScreen.style.top = '50%';
+  gameOverScreen.style.left = '50%';
+  gameOverScreen.style.transform = 'translate(-50%, -50%)';
+  gameOverScreen.style.background = 'rgba(0,0,0,0.8)';
+  gameOverScreen.style.color = 'white';
+  gameOverScreen.style.padding = '20px';
+  gameOverScreen.style.textAlign = 'center';
+  gameOverScreen.style.borderRadius = '10px';
+  gameOverScreen.style.zIndex = '100';
+  
+  gameOverScreen.innerHTML = `
+    <h2>Game Over!</h2>
+    <p>Your Score: ${score}</p>
+    <button onclick="location.reload()">Play Again</button>
+  `;
+  
+  document.body.appendChild(gameOverScreen);
 }
 
-// ----------------- Banana API Pause -----------------
 function pauseForBananaAPI() {
   if (isGameOver) return;
-  gameStarted = false; // pause everything
+  gameStarted = false;
 
   const overlay = document.createElement('div');
   overlay.id = 'banana-popup';
@@ -171,11 +236,10 @@ function pauseForBananaAPI() {
 
   document.getElementById('completeBtn').addEventListener('click', () => {
     overlay.remove();
-    showCountdown(5); // 5 second visual countdown
+    showCountdown(5);
   });
 }
 
-// ----------------- Countdown -----------------
 function showCountdown(seconds) {
   const countdown = document.createElement('div');
   countdown.id = 'countdown';
@@ -196,17 +260,9 @@ function showCountdown(seconds) {
     if (current <= 0) {
       clearInterval(interval);
       countdown.remove();
-
-      // Wait 3 seconds before resuming
-      setTimeout(() => {
-        isGameOver = false;
-        gameStarted = true;
-        resumeAnimations();
-        scheduleNextObstacle(); // resume spawning
-      }, 3000);
+      gameStarted = true;
     } else {
       countdown.textContent = current;
     }
-
   }, 1000);
 }
