@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Truck Runner</title>
+  <style>
+    /* ...existing code... */
+    body {
+      background: linear-gradient(to top, #87ceeb, #fff);
+      overflow: hidden;
+      font-family: 'Open Sans', sans-serif;
+      transition: background 3s linear;
+    }
+
+    .loop-wrapper {
+      margin: 0 auto;
+      position: relative;
+      width: 600px;
+      height: 250px;
+      overflow: hidden;
+      border-bottom: 3px solid #fff;
+    }
+
+    /* Road strip for obstacle visibility */
+    .loop-wrapper::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 60px;
+      background: rgba(0, 0, 0, 0.2);
+      z-index: 3;
+    }
+
+    /* Background elements */
+    .mountain {
+      position: absolute;
+      right: -900px;
+      bottom: -20px;
+      width: 2px;
+      height: 2px;
+      box-shadow:
+        0 0 0 50px #4DB6AC,
+        60px 50px 0 70px #4DB6AC,
+        90px 90px 0 50px #4DB6AC,
+        250px 250px 0 50px #4DB6AC,
+        290px 320px 0 50px #4DB6AC,
+        320px 400px 0 50px #4DB6AC;
+      transform: rotate(130deg);
+      animation: mtn 20s linear infinite;
+      z-index: 1;
+    }
+
+    .hill {
+      position: absolute;
+      right: -900px;
+      bottom: -50px;
+      width: 400px;
+      border-radius: 50%;
+      height: 20px;
+      box-shadow:
+        0 0 0 50px #4DB6AC,
+        -20px 0 0 20px #4DB6AC,
+        -90px 0 0 50px,
+        250px 0 0 50px,
+        290px 0 0 50px,
+        620px 0 0 50px;
+      animation: hill 4s 2s linear infinite;
+      z-index: 2;
+    }
+
+    .tree,
+    .tree:nth-child(2),
+    .tree:nth-child(3) {
+      height: 100px;
+      width: 35px;
+      bottom: 0;
+      background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/130015/tree.svg) no-repeat;
+      z-index: 3;
+    }
+
+    .tree:nth-child(2) {
+      animation: tree2 2s linear infinite;
+    }
+
+    .tree:nth-child(3) {
+      animation: tree3 8s linear infinite;
+    }
+
+    /* Truck + wheels */
+    .truck-wrapper {
+      position: absolute;
+      bottom: 0;
+      left: 100px;
+      z-index: 15;
+      transition: bottom 0.3s ease;
+    }
+
+    .truck {
+      width: 85px;
+      height: 60px;
+      background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/130015/truck.svg) no-repeat;
+      background-size: contain;
+    }
+
+    .wheels {
+      width: 85px;
+      height: 15px;
+      background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/130015/wheels.svg) no-repeat;
+      background-size: contain;
+      position: relative;
+      bottom: 5px;
+    }
+
+    .jump {
+      animation: jumpTruck 0.6s ease-out;
+    }
+
+    @keyframes jumpTruck {
+      0% {
+        bottom: 0px;
+      }
+
+      50% {
+        bottom: 120px;
+      }
+
+      100% {
+        bottom: 0px;
+      }
+    }
+
+    /* Obstacles */
+    .obstacle {
+      position: absolute;
+      bottom: 0;
+      z-index: 10;
+      transition: background 3s linear;
+    }
+
+    .tire {
+      width: 30px;
+      height: 30px;
+      background: black;
+      border-radius: 50%;
+    }
+
+    .rock {
+      width: 25px;
+      height: 35px;
+      background: #555;
+      border-radius: 5px;
+    }
+
+    .debris {
+      background: #8B4513;
+      border-radius: 3px;
+    }
+
+    /* Overlay */
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 30;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      color: white;
+      text-align: center;
+    }
+
+    /* Score */
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 50;
+      font-size: 20px;
+      font-weight: bold;
+      color: rgb(0, 0, 0);
+    }
+
+    /* Auth / User UI */
+    #auth-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px;
+      border-radius: 6px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #auth-container select,
+    #auth-container input {
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    #auth-container button {
+      padding: 6px 8px;
+      background: #4DB6AC;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #user-profile {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #userPhoto {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid #4DB6AC;
+    }
+
+    /* Leaderboard modal */
+    #leaderboardModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #leaderboardModal .modal-content {
+      background: white;
+      color: #222;
+      padding: 16px;
+      border-radius: 8px;
+      min-width: 260px;
+    }
+
+    /* Background animations */
+    @keyframes tree {
+      0% {
+        transform: translate(1350px);
+      }
+
+      100% {
+        transform: translate(-50px);
+      }
+    }
+
+    @keyframes tree2 {
+      0% {
+        transform: translate(650px);
+      }
+
+      100% {
+        transform: translate(-50px);
+      }
+    }
+
+    @keyframes tree3 {
+      0% {
+        transform: translate(2750px);
+      }
+
+      100% {
+        transform: translate(-50px);
+      }
+    }
+
+    @keyframes mtn {
+      100% {
+        transform: translateX(-2000px) rotate(130deg);
+      }
+    }
+
+    @keyframes hill {
+      100% {
+        transform: translateX(-2000px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- user management UI (localStorage-based, no auth) -->
+  <div id="auth-container">
+    <div id="dbStatus" style="font-size:12px;color:#666;margin-right:8px">⚪ Offline</div>
+
+    <!-- Auth/profile -->
+    <div id="user-profile" style="display:none">
+      <img id="userPhoto" src="" alt="Profile">
+      <span id="userName"></span>
+      <button id="signOutBtn" style="margin-left:8px">Sign Out</button>
+    </div>
+
+    <!-- Google sign-in -->
+    <div id="signin-container">
+      <button id="googleSignInBtn">
+        <img src="https://www.google.com/favicon.ico" width="14" height="14" style="margin-right:8px">
+        Sign in with Google
+      </button>
+    </div>
+
+    <!-- Local user fallback controls -->
+    <select id="userSelect" title="Switch user" style="min-width:140px"></select>
+    <input id="newUserName" placeholder="New user..." />
+    <button id="addUserBtn">Add</button>
+    <button id="removeUserBtn">Remove</button>
+
+    <button id="showLeaderboardBtn">Leaderboard</button>
+  </div>
+
+  <div class="loop-wrapper" id="loop-wrapper">
+    <!-- Background elements -->
+    <div class="mountain"></div>
+    <div class="hill"></div>
+    <div class="tree"></div>
+    <div class="tree"></div>
+    <div class="tree"></div>
+
+    <!-- Obstacles -->
+    <div id="obstacles-container"></div>
+
+    <!-- Truck -->
+    <div class="truck-wrapper" id="truck-wrapper">
+      <div class="truck"></div>
+      <div class="wheels"></div>
+    </div>
+
+    <!-- Score -->
+    <div id="score">Score: 0</div>
+
+    <!-- Overlay -->
+    <div id="overlay">
+      <h1>Truck Runner</h1>
+      <p>Dodge debris on the road!</p>
+      <p style="font-size:12px;margin-top:-6px">Pick or create a user, each has separate saves.</p>
+      <button id="startBtn">Start Game</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard modal -->
+  <div id="leaderboardModal">
+    <div class="modal-content">
+      <h3>Leaderboard (Current User)</h3>
+      <div id="leaderboardList" style="max-height:220px;overflow:auto"></div>
+      <div style="margin-top:8px;text-align:right">
+        <button id="closeLeaderboardBtn" style="background:#888">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+/* Consolidated script (Firebase auth + Firestore + local fallback + game).
+   Comments added to explain purpose and behavior of key lines/blocks.
+*/
+
+/* -----------------------
+   Firebase SDK imports
+   ----------------------- */
+// Import core Firebase app (initializes the SDK).
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+// Import Analytics (optional; wrapped in try/catch later).
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js";
+// Import Auth modules needed for Google sign-in.
+import {
+  getAuth,                 // Provides auth instance.
+  GoogleAuthProvider,      // Provider for Google sign-in.
+  signInWithPopup,         // Opens popup for OAuth.
+  onAuthStateChanged,      // Listener for auth state changes.
+  signOut                  // Signs out the user.
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+// Import Firestore modules for reading/writing game data.
+import {
+  getFirestore,            // Provides Firestore instance.
+  collection,              // Reference a collection.
+  addDoc,                  // Add a new document to a collection.
+  getDocs,                 // Read documents from a query.
+  doc,                     // Reference a document.
+  setDoc,                  // Create/overwrite or merge a document.
+  deleteDoc,               // Delete a document.
+  query,                   // Build a query.
+  orderBy,                 // Order query results.
+  where,                   // Filter query results.
+  getDoc,                  // Read a single document.
+  limit                    // Limit results.
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+/* -----------------------
+   Firebase configuration
+   ----------------------- */
+// The provided Firebase project configuration — required to initialize the SDK.
+const firebaseConfig = {
+  apiKey: "AIzaSyAjpAGju43D4gxe5rmWCU3ubS87_i6rnIc",
+  authDomain: "truck-runner.firebaseapp.com",
+  projectId: "truck-runner",
+  storageBucket: "truck-runner.firebasestorage.app",
+  messagingSenderId: "5012366741",
+  appId: "1:5012366741:web:98be4db0150851023b029c",
+  measurementId: "G-Y6701WR63E"
+};
+
+/* -----------------------
+   DOM references
+   ----------------------- */
+// Cache frequently used DOM elements so code below is concise and fast.
+const dbStatus = document.getElementById('dbStatus');                // shows Firebase / environment hints
+const userProfileEl = document.getElementById('user-profile');      // profile block (photo + name)
+const userPhoto = document.getElementById('userPhoto');             // profile image element
+const userName = document.getElementById('userName');               // profile name text
+const signinContainer = document.getElementById('signin-container'); // container with sign-in button
+const googleSignInBtn = document.getElementById('googleSignInBtn'); // Google sign-in button
+const signOutBtn = document.getElementById('signOutBtn');           // Sign-out button
+
+// Local fallback controls (used if Firebase is unavailable or user prefers local)
+const userSelect = document.getElementById('userSelect');           // local user selector
+const newUserName = document.getElementById('newUserName');         // local user input
+const addUserBtn = document.getElementById('addUserBtn');           // add local user button
+const removeUserBtn = document.getElementById('removeUserBtn');     // remove local user button
+
+// Leaderboard modal and related elements
+const showLeaderboardBtn = document.getElementById('showLeaderboardBtn');
+const leaderboardModal = document.getElementById('leaderboardModal');
+const leaderboardList = document.getElementById('leaderboardList');
+const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+
+// Game UI elements
+const startBtn = document.getElementById('startBtn');               // start game button
+const overlay = document.getElementById('overlay');                 // start overlay
+
+const truckWrapper = document.getElementById('truck-wrapper');      // truck DOM element (for collision)
+const obstaclesContainer = document.getElementById('obstacles-container'); // obstacles container
+const scoreDisplay = document.getElementById('score');             // score text
+
+/* -----------------------
+   Local storage keys & state
+   ----------------------- */
+const USERS_KEY = 'truckRunnerUsers';            // key for saved local users
+const CURRENT_USER_KEY = 'truckRunnerCurrentUserId'; // key for selected local user
+
+// Runtime state variables (kept concise)
+let app = null;               // Firebase app instance (if initialized)
+let auth = null;              // Firebase Auth instance
+let db = null;                // Firestore instance
+let firebaseAvailable = false;// true when Firebase services are initialized
+let authUser = null;          // currently signed-in Firebase user (if any)
+
+let localUsers = [];          // array of local user objects fallback
+let localCurrentUser = null;  // selected local user when not signed in
+
+/* Game state */
+let score = 0;
+let isJumping = false;
+let isGameOver = false;
+let gameStarted = false;
+const obstacles = [];         // active obstacle DOM nodes
+let obstacleSpeed = 8;        // pixels per frame step
+let scoreIntervalId = null;   // interval id for incrementing score periodically
+
+/* -----------------------
+   Small helpers
+   ----------------------- */
+// Display a short status / hint in the top-right status element.
+function showStatus(text, color = '#666') {
+  if (dbStatus) { dbStatus.textContent = text; dbStatus.style.color = color; }
+}
+
+/* -----------------------
+   Initialize Firebase (safe)
+   - If initialization fails, the app stays functional with local fallback.
+   ----------------------- */
+try {
+  app = initializeApp(firebaseConfig);            // initialize the Firebase SDK with config
+  try { getAnalytics(app); } catch (e) { /* analytics optional */ } // analytics not critical
+  auth = getAuth(app);                             // create auth instance
+  db = getFirestore(app);                          // create firestore instance
+  firebaseAvailable = true;
+  showStatus('🟢 Firebase init OK', '#4caf50');    // indicate Firebase is ready
+} catch (e) {
+  // If any error occurs here (e.g. offline, config issue), fall back to local-only mode.
+  console.warn('Firebase not available:', e);
+  firebaseAvailable = false;
+  showStatus('⚠ Firebase unavailable — running local-only', '#b35000');
+}
+
+/* -----------------------
+   Local storage helpers (fallback path)
+   - Keep user data locally when Firebase is not used/available.
+   ----------------------- */
+function loadLocalUsers() {                          // load local users from localStorage
+  try {
+    localUsers = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  } catch (e) {
+    localUsers = [];                                // corrupt data -> reset to empty array
+  }
+  const id = localStorage.getItem(CURRENT_USER_KEY);
+  localCurrentUser = localUsers.find(u => u.id === id) || (localUsers[0] || null);
+}
+
+// Persist local users & selected user id
+function saveLocalUsers() {
+  localStorage.setItem(USERS_KEY, JSON.stringify(localUsers));
+  localStorage.setItem(CURRENT_USER_KEY, localCurrentUser ? localCurrentUser.id : '');
+}
+
+// Add a new local user (returns created user object or null)
+function addLocalUser(name) {
+  if (!name || !name.trim()) return null;
+  const id = 'local-' + Date.now();
+  const u = { id, name: name.trim(), highScore: 0, scores: [] };
+  localUsers.push(u);
+  saveLocalUsers();
+  populateLocalUserSelect();                          // update UI select element
+  switchLocalUser(id);                                // select new user
+  return u;
+}
+
+// Remove a local user by id
+function removeLocalUser(id) {
+  if (!id) return;
+  localUsers = localUsers.filter(x => x.id !== id);
+  if (localCurrentUser && localCurrentUser.id === id) localCurrentUser = localUsers[0] || null;
+  saveLocalUsers();
+  populateLocalUserSelect();
+  updateUI();
+}
+
+// Set the selected local user
+function switchLocalUser(id) {
+  localCurrentUser = localUsers.find(u => u.id === id) || null;
+  saveLocalUsers();
+  updateUI();
+}
+
+// Fill the <select> with local users
+function populateLocalUserSelect() {
+  if (!userSelect) return;
+  userSelect.innerHTML = '';
+  localUsers.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = `${u.name} (High: ${u.highScore || 0})`;
+    if (localCurrentUser && u.id === localCurrentUser.id) opt.selected = true;
+    userSelect.appendChild(opt);
+  });
+  if (localUsers.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '-- no users --';
+    userSelect.appendChild(opt);
+  }
+}
+
+/* -----------------------
+   UI update
+   - Show either Firebase profile or local controls depending on auth state.
+   ----------------------- */
+function updateUI() {
+  if (authUser) {
+    // Signed in with Firebase: show profile and hide local controls.
+    userProfileEl.style.display = 'flex';
+    signinContainer.style.display = 'none';
+    userPhoto.src = authUser.photoURL || `https://via.placeholder.com/28?text=${(authUser.displayName||'U')[0]}`;
+    userName.textContent = authUser.displayName || authUser.email || 'User';
+    // hide local controls (we rely on remote users/scores via Firestore)
+    userSelect.style.display = 'none';
+    newUserName.style.display = 'none';
+    addUserBtn.style.display = 'none';
+    removeUserBtn.style.display = 'none';
+  } else {
+    // Not signed in: show sign-in button and local fallback controls.
+    userProfileEl.style.display = 'none';
+    signinContainer.style.display = 'block';
+    userSelect.style.display = 'inline-block';
+    newUserName.style.display = 'inline-block';
+    addUserBtn.style.display = 'inline-block';
+    removeUserBtn.style.display = 'inline-block';
+    // Ensure local users are loaded and shown
+    loadLocalUsers();
+    populateLocalUserSelect();
+    if (localCurrentUser) {
+      userPhoto.src = 'https://via.placeholder.com/28?text=' + encodeURIComponent(localCurrentUser.name.charAt(0).toUpperCase());
+      userName.textContent = `${localCurrentUser.name} (High: ${localCurrentUser.highScore || 0})`;
+      userProfileEl.style.display = 'flex';
+    } else {
+      userProfileEl.style.display = 'none';
+    }
+  }
+}
+
+/* -----------------------
+   Firebase Google Sign-in
+   ----------------------- */
+async function handleGoogleSignIn() {
+  if (!firebaseAvailable || !auth) {
+    alert('Firebase auth not available. Play locally or set up Firebase.');
+    return;
+  }
+  // OAuth popup does not work from file:// — guide the user to use http(s).
+  if (location.protocol === 'file:') {
+    alert('Serve this page over http(s) to enable Google sign-in (e.g. run "python -m http.server" in the folder).');
+    return;
+  }
+  googleSignInBtn.disabled = true;                      // avoid double-clicks
+  try {
+    const provider = new GoogleAuthProvider();          // Google OAuth provider
+    const result = await signInWithPopup(auth, provider); // open popup to sign in
+    console.log('Signed in:', result.user.uid);
+    // onAuthStateChanged handler (below) will update UI & ensure user doc
+  } catch (e) {
+    console.error('Sign-in failed', e);
+    // Provide helpful messages for common failure cases
+    if (e.code === 'auth/popup-blocked') alert('Popup blocked. Allow popups for this site and try again.');
+    else if (e.code === 'auth/unauthorized-domain') {
+      alert('This domain is not authorized in Firebase Console. Add it under Authentication → Authorized domains.');
+    } else {
+      alert('Sign-in failed: ' + (e.message || e.code));
+    }
+  } finally {
+    googleSignInBtn.disabled = false;
+  }
+}
+
+/* -----------------------
+   Auth state listener
+   - Keeps authUser updated and ensures Firestore user doc exists.
+   ----------------------- */
+if (firebaseAvailable && auth) {
+  onAuthStateChanged(auth, async (user) => {
+    authUser = user;                                    // keep runtime authUser in sync
+    if (authUser) {
+      // Ensure a user document exists in users collection (for highScore & metadata).
+      try {
+        const userRef = doc(db, 'users', authUser.uid);
+        const userDoc = await getDoc(userRef);
+        if (!userDoc.exists()) {
+          // Create a minimal user document if missing.
+          await setDoc(userRef, {
+            name: authUser.displayName || '',
+            email: authUser.email || '',
+            photoURL: authUser.photoURL || '',
+            highScore: 0,
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (e) {
+        console.error('Error ensuring user doc:', e);
+      }
+    }
+    updateUI();                                        // reflect new auth state in UI
+  });
+}
+
+/* -----------------------
+   Sign out (Firebase or local)
+   ----------------------- */
+async function handleSignOut() {
+  if (!firebaseAvailable || !auth) {
+    // If Firebase not available, just clear runtime auth state for UI.
+    authUser = null;
+    updateUI();
+    return;
+  }
+  try {
+    await signOut(auth);                               // sign out from Firebase
+  } catch (e) {
+    console.error('Sign out failed', e);
+  }
+}
+
+/* -----------------------
+   Save score (remote-first, local fallback)
+   - Saves score to Firestore if user is authenticated.
+   - If Firestore save fails, falls back to local storage.
+   ----------------------- */
+async function saveScore(finalScore) {
+  if (authUser && firebaseAvailable && db) {
+    try {
+      // add document to scores collection with a timestamp
+      await addDoc(collection(db, 'scores'), {
+        userId: authUser.uid,
+        userName: authUser.displayName || authUser.email || '',
+        score: finalScore,
+        timestamp: new Date().toISOString()
+      });
+      // update user's high score if improved
+      try {
+        const userRef = doc(db, 'users', authUser.uid);
+        const userDoc = await getDoc(userRef);
+        const currentHigh = userDoc.exists() ? (userDoc.data().highScore || 0) : 0;
+        if (finalScore > currentHigh) {
+          await setDoc(userRef, { highScore: finalScore }, { merge: true });
+        }
+      } catch (e) {
+        console.warn('Could not update high score:', e);
+      }
+    } catch (e) {
+      console.error('Failed to save score to Firestore:', e);
+      alert('Failed to save score remotely. Score will be kept locally.');
+      saveScoreLocalFallback(finalScore);               // local fallback
+    }
+    return;
+  }
+  // If not signed in or Firebase unavailable — save locally.
+  saveScoreLocalFallback(finalScore);
+}
+
+// Save score to currently selected local user
+function saveScoreLocalFallback(finalScore) {
+  if (!localCurrentUser) {
+    localCurrentUser = addLocalUser('Player ' + (localUsers.length + 1)); // create default local user
+  }
+  localCurrentUser.scores = localCurrentUser.scores || [];
+  localCurrentUser.scores.push({ score: finalScore, timestamp: new Date().toISOString() });
+  if (finalScore > (localCurrentUser.highScore || 0)) localCurrentUser.highScore = finalScore;
+  saveLocalUsers();
+  populateLocalUserSelect();
+  updateUI();
+}
+
+/* -----------------------
+   Leaderboard: remote (auth) or local
+   ----------------------- */
+async function openLeaderboard() {
+  leaderboardList.innerHTML = '';
+
+  if (firebaseAvailable && db) {
+    try {
+      // 1️⃣ Fetch top 10 users by highScore
+      const usersSnapshot = await getDocs(query(
+        collection(db, 'users'),
+        orderBy('highScore', 'desc'),
+        limit(10)
+      ));
+
+      if (usersSnapshot.empty) {
+        leaderboardList.innerHTML = '<div style="padding:8px">No scores yet.</div>';
+      } else {
+        let i = 1;
+        for (const docSnap of usersSnapshot.docs) {
+          const user = docSnap.data();
+          let lastScoreTime = '—';
+
+          // 2️⃣ Fetch latest score timestamp for this user from 'scores' collection
+          try {
+            const q = query(
+              collection(db, 'scores'),
+              where('userId', '==', docSnap.id),
+              orderBy('score', 'desc'),
+              limit(1)
+            );
+            const scoreSnap = await getDocs(q);
+            if (!scoreSnap.empty) {
+              const s = scoreSnap.docs[0].data();
+              lastScoreTime = new Date(s.timestamp).toLocaleString();
+            }
+          } catch (e) {
+            console.warn('Error fetching last score timestamp for user', docSnap.id, e);
+          }
+
+          const div = document.createElement('div');
+          div.style.padding = '6px 0';
+          div.textContent = `${i++}. ${user.name || 'Unknown'} — High Score: ${user.highScore || 0} — Achieved: ${lastScoreTime}`;
+          leaderboardList.appendChild(div);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading leaderboard', e);
+      leaderboardList.innerHTML = '<div style="padding:8px">Error loading leaderboard.</div>';
+    }
+
+    leaderboardModal.style.display = 'flex';
+    return;
+  }
+
+  // Local fallback: show all local users’ high scores
+  if (localUsers.length === 0) {
+    leaderboardList.innerHTML = '<div style="padding:8px">No users yet.</div>';
+  } else {
+    const sortedUsers = localUsers.slice().sort((a,b) => (b.highScore || 0) - (a.highScore || 0));
+    sortedUsers.forEach((u, i) => {
+      const div = document.createElement('div');
+      div.style.padding = '6px 0';
+      let lastScoreObj = (u.scores || []).filter(s => s.score === u.highScore).pop();
+      let lastScoreTime = lastScoreObj ? new Date(lastScoreObj.timestamp).toLocaleString() : '—';
+      div.textContent = `${i+1}. ${u.name} — High Score: ${u.highScore || 0} — Achieved: ${lastScoreTime}`;
+      leaderboardList.appendChild(div);
+    });
+    leaderboardModal.style.display = 'flex';
+  }
+}
+
+/* -----------------------
+   Game logic (kept minimal & robust)
+   ----------------------- */
+function handleJumpKey(e) {
+  if ((e.code === 'Space' || e.key === ' ') && !isJumping && !isGameOver && gameStarted) jump();
+}
+function jump() {
+  isJumping = true;
+  truckWrapper.classList.add('jump');
+  setTimeout(() => { truckWrapper.classList.remove('jump'); isJumping = false; }, 600);
+}
+function spawnObstacle() {
+  const types = [
+    { type: 'tire', height: 30, width: 30 },
+    { type: 'rock', height: 25, width: 35 },
+    { type: 'debris', height: 20 + Math.random() * 20, width: 20 + Math.random() * 20 }
+  ];
+  const chosen = types[Math.floor(Math.random() * types.length)];
+  const obs = document.createElement('div');
+  obs.classList.add('obstacle', chosen.type);
+  obs.style.height = chosen.height + 'px';
+  obs.style.width = chosen.width + 'px';
+  obs.style.left = '600px';
+  obs.style.bottom = '0px';
+  if (chosen.type === 'debris') obs.style.transform = `rotate(${Math.random() * 30 - 15}deg)`;
+  obstaclesContainer.appendChild(obs);
+  obstacles.push(obs);
+}
+function scheduleNextObstacle() {
+  if (isGameOver) return;
+  if (gameStarted) spawnObstacle();
+  setTimeout(scheduleNextObstacle, 900 + Math.random() * 1200);
+}
+function isColliding(truck, obs) {
+  const t = truck.getBoundingClientRect();
+  const o = obs.getBoundingClientRect();
+  return !(t.top > o.bottom || t.bottom < o.top || t.right < o.left || t.left > o.right);
+}
+function moveObstacles() {
+  if (isGameOver) return;
+  if (!gameStarted) { requestAnimationFrame(moveObstacles); return; }
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obs = obstacles[i];
+    let left = parseInt(obs.style.left) || 0;
+    left -= obstacleSpeed;
+    obs.style.left = left + 'px';
+    if (left < -100) { obs.remove(); obstacles.splice(i,1); continue; }
+    if (isColliding(truckWrapper, obs)) { gameOver(); return; }
+  }
+  requestAnimationFrame(moveObstacles);
+}
+async function gameOver() {
+  if (isGameOver) return;
+  isGameOver = true;
+  gameStarted = false;
+  document.removeEventListener('keydown', handleJumpKey);
+  if (scoreIntervalId) { clearInterval(scoreIntervalId); scoreIntervalId = null; }
+  await saveScore(score); // persist result (remote or local)
+  // show a simple game-over dialog
+  const scr = document.createElement('div');
+  scr.id = 'game-over-screen';
+  scr.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px;border-radius:10px;z-index:100;text-align:center;';
+  scr.innerHTML = `<h2>Game Over!</h2><p>Your Score: ${score}</p><p>Saved to ${authUser ? 'your account' : (localCurrentUser ? localCurrentUser.name : 'local') }</p><button id="playAgainBtn">Play Again</button><button id="backToMenuBtn" style="margin-left:8px">Menu</button>`;
+  document.body.appendChild(scr);
+  document.getElementById('playAgainBtn').addEventListener('click', () => { scr.remove(); startGame(); });
+  document.getElementById('backToMenuBtn').addEventListener('click', () => { scr.remove(); overlay.style.display = 'block'; });
+}
+function startGame() {
+  gameStarted = true;
+  score = 0;
+  isGameOver = false;
+  scoreDisplay.textContent = 'Score: 0';
+  while (obstaclesContainer.firstChild) obstaclesContainer.removeChild(obstaclesContainer.firstChild);
+  obstacles.length = 0;
+  scheduleNextObstacle();
+  requestAnimationFrame(moveObstacles);
+  document.addEventListener('keydown', handleJumpKey);
+  if (scoreIntervalId) clearInterval(scoreIntervalId);
+  scoreIntervalId = setInterval(() => { if (!isGameOver && gameStarted) { score++; scoreDisplay.textContent = 'Score: ' + score; } }, 200);
+}
+
+/* -----------------------
+   DOM event wiring (safe attach)
+   - Attach listeners after DOMContentLoaded so elements exist.
+   ----------------------- */
+document.addEventListener('DOMContentLoaded', () => {
+  // Local user management handlers
+  addUserBtn.addEventListener('click', () => {
+    const name = (newUserName.value || '').trim() || prompt('Enter user name:');
+    if (!name) return;
+    addLocalUser(name);           // add new local user and persist
+    newUserName.value = '';
+  });
+  userSelect.addEventListener('change', (e) => { if (e.target.value) switchLocalUser(e.target.value); });
+  removeUserBtn.addEventListener('click', () => {
+    if (!localCurrentUser) return alert('No local user selected.');
+    if (!confirm('Remove local user "' + localCurrentUser.name + '"?')) return;
+    removeLocalUser(localCurrentUser.id);
+  });
+
+  // Firebase auth controls
+  googleSignInBtn.addEventListener('click', handleGoogleSignIn);
+  signOutBtn.addEventListener('click', handleSignOut);
+
+  // Leaderboard modal controls
+  showLeaderboardBtn.addEventListener('click', openLeaderboard);
+  closeLeaderboardBtn.addEventListener('click', () => { leaderboardModal.style.display = 'none'; });
+
+  // Start game button (requires either auth or a local user)
+  startBtn.addEventListener('click', () => {
+    if (!authUser && !localCurrentUser) {
+      alert('Sign in with Google or create/select a local user to start.');
+      return;
+    }
+    overlay.style.display = 'none';
+    startGame();
+  });
+
+  // Initialize local fallback data and UI
+  loadLocalUsers();
+  populateLocalUserSelect();
+  updateUI();
+
+  // Helpful environment hints (file:// vs http and authorized domain)
+  if (location.protocol === 'file:') {
+    showStatus('⚠ Serve via http(s) to enable Google sign-in (file:// blocks OAuth)', '#b35000');
+    googleSignInBtn.disabled = true; // disable because popup-based OAuth won't work from file://
+  } else if (firebaseAvailable) {
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      // remind the developer to add the domain to Firebase authentication authorized domains
+      showStatus('🔔 Ensure this domain is added in Firebase Console → Authentication → Authorized domains', '#0066b3');
+    }
+  }
+});
+  </script>
+</body>
+
+</html>
