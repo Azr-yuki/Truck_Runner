@@ -11,6 +11,7 @@ body {
 /* -----------------------------
    LOOP-WRAPPER & BACKGROUND ELEMENTS
    ----------------------------- */
+/* Main viewport for the game; fixed width keeps parallax math simple */
 .loop-wrapper {
   margin: 0 auto;
   position: relative;
@@ -20,6 +21,7 @@ body {
   border-bottom: 3px solid #fff; /* Road line effect */
 }
 
+/* Ground shadow that adds depth without extra DOM nodes */
 .loop-wrapper::after {
   content: "";
   position: absolute;
@@ -31,6 +33,7 @@ body {
 }
 
 /* Mountains */
+/* Tiny element with a huge box-shadow list that paints all mountains in one go */
 .mountain {
   position: absolute;
   right: -900px;
@@ -44,6 +47,7 @@ body {
 }
 
 /* Hills */
+/* Rounded hills glide past the player more quickly than the far mountains */
 .hill {
   position: absolute;
   right: -900px;
@@ -57,6 +61,7 @@ body {
 }
 
 /* Trees */
+/* Three tree instances share the same sprite but run different animations */
 .tree, .tree:nth-child(2), .tree:nth-child(3) {
   height: 100px;
   width: 35px;
@@ -71,6 +76,7 @@ body {
 /* -----------------------------
    TRUCK + WHEELS
    ----------------------------- */
+/* Wrapper is what actually moves up/down during a jump */
 .truck-wrapper {
   position: absolute;
   bottom: 0;
@@ -109,6 +115,7 @@ body {
 /* -----------------------------
    OBSTACLES
    ----------------------------- */
+/* Base obstacle styles; JS swaps in tire/rock/debris classes for specific shapes */
 .obstacle {
   position: absolute;
   bottom: 0;
@@ -116,6 +123,7 @@ body {
   transition: background 3s linear; /* Smooth color transition if needed */
 }
 
+/* Tire obstacles are perfect circles */
 .tire {
   width: 30px;
   height: 30px;
@@ -123,6 +131,7 @@ body {
   border-radius: 50%; /* Circle tire */
 }
 
+/* Rock obstacles are taller for more variety */
 .rock {
   width: 25px;
   height: 35px;
@@ -130,6 +139,7 @@ body {
   border-radius: 5px; /* Rounded edges */
 }
 
+/* Small debris pieces keep players alert between large hazards */
 .debris {
   width: 20px;
   height: 25px;
@@ -140,6 +150,7 @@ body {
 /* -----------------------------
    OVERLAY & GAME START UI
    ----------------------------- */
+/* Center overlay for start + game-over states */
 #overlay {
   position: absolute;
   top: 50%;
@@ -156,6 +167,7 @@ body {
 /* -----------------------------
    SCORE DISPLAY
    ----------------------------- */
+/* Score HUD pinned to top-left of the play area */
 #score {
   position: absolute;
   top: 10px;
@@ -169,6 +181,7 @@ body {
 /* -----------------------------
    AUTH/UI CONTROLS
    ----------------------------- */
+/* Floating card for auth controls */
 #auth-container {
   position: absolute;
   top: 10px;
@@ -213,6 +226,7 @@ body {
 /* -----------------------------
    LEADERBOARD MODAL
    ----------------------------- */
+/* Full-screen scrim that hosts the leaderboard dialog */
 #leaderboardModal {
   display: none;
   position: fixed;
@@ -234,6 +248,7 @@ body {
 /* -----------------------------
    BANANA PUZZLE MODAL
    ----------------------------- */
+/* Second-life modal darkens the entire screen */
 #bananaModal {
   display: none;
   position: fixed;
@@ -271,25 +286,30 @@ body {
 /* -----------------------------
    BACKGROUND ANIMATIONS
    ----------------------------- */
+/* Default tree speed: medium */
 @keyframes tree {
   0% { transform: translate(1350px); }
   100% { transform: translate(-50px); }
 }
 
+/* Faster tree animation for depth */
 @keyframes tree2 {
   0% { transform: translate(650px); }
   100% { transform: translate(-50px); }
 }
 
+/* Slowest tree gives the illusion of distance */
 @keyframes tree3 {
   0% { transform: translate(2750px); }
   100% { transform: translate(-50px); }
 }
 
+/* Mountains just shift horizontally while keeping rotation */
 @keyframes mtn {
   100% { transform: translateX(-2000px) rotate(130deg); }
 }
 
+/* Hills pan a little quicker than mountains to increase parallax */
 @keyframes hill {
   100% { transform: translateX(-2000px); }
 }

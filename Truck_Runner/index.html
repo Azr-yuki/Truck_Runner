@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Truck Runner</title>
 
-<!-- Link to external CSS file for styling -->
+<!-- Load all layout + animation rules for the runner scene -->
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -14,11 +14,13 @@
 <!-- ===============================
      AUTH / USER INTERFACE
      =============================== -->
+<!-- Floating HUD that handles sign-in status, user profile, and leaderboard access -->
 <div id="auth-container">
   <!-- Firebase DB connection status -->
   <div id="dbStatus" style="font-size:12px;color:#666;margin-right:8px">⚪ Offline</div>
 
   <!-- Signed-in user profile -->
+  <!-- Hidden until Firebase auth fires; shows avatar + sign-out button -->
   <div id="user-profile" style="display:none">
     <img id="userPhoto" src="" alt="Profile">
     <span id="userName"></span>
@@ -26,6 +28,7 @@
   </div>
 
   <!-- Sign-in button for Google -->
+  <!-- Visible while no user session exists -->
   <div id="signin-container">
     <button id="googleSignInBtn">
       <img src="https://www.google.com/favicon.ico" width="14" height="14" style="margin-right:8px">
@@ -47,9 +50,11 @@
 <!-- ===============================
      GAME AREA / BACKGROUND
      =============================== -->
+<!-- Container for every animated element (truck, obstacles, parallax background) -->
 <div class="loop-wrapper" id="loop-wrapper">
 
   <!-- Background elements for visual depth -->
+  <!-- Repeat tree divs to stagger animation speeds for parallax effect -->
   <div class="mountain"></div>
   <div class="hill"></div>
   <div class="tree"></div>
@@ -66,9 +71,11 @@
   </div>
 
   <!-- Score display -->
+  <!-- The score text is updated every 200ms by script.js -->
   <div id="score">Score: 0</div>
 
   <!-- Overlay screen (shown at start or game over) -->
+  <!-- JS toggles this overlay to show the start CTA or game-over stats -->
   <div id="overlay">
     <h1>Truck Runner</h1>
     <p>Dodge debris on the road!</p>
@@ -81,9 +88,11 @@
 <!-- ===============================
      LEADERBOARD MODAL
      =============================== -->
+<!-- Modal sits outside the runner canvas so it can cover the whole viewport -->
 <div id="leaderboardModal">
   <div class="modal-content">
     <h3>Leaderboard</h3>
+    <!-- JS injects the top 10 Firestore scores here -->
     <div id="leaderboardList" style="max-height:220px;overflow:auto"></div>
     <div style="margin-top:8px;text-align:right">
       <button id="closeLeaderboardBtn" style="background:#888">Close</button>
@@ -95,6 +104,7 @@
 <!-- ===============================
      BANANA PUZZLE MODAL
      =============================== -->
+<!-- Second-life puzzle modal; triggered when the player crashes and still has a revive -->
 <div id="bananaModal">
   <div class="modal-content">
     <h3>🍌 Second Life Puzzle! 🍌</h3>
@@ -121,6 +131,7 @@
 <!-- ===============================
      MAIN SCRIPT
      =============================== -->
+<!-- Main module wires Firebase auth, Firestore, banana puzzles, and runner logic -->
 <script type="module" src="script.js"></script>
 
 </body>

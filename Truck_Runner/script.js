@@ -110,6 +110,7 @@ async function checkFirebaseStatus() {
 // Check status initially and every 15s
 if (firebaseAvailable && db) {
   checkFirebaseStatus();
+  // Poll Firestore every 15s so the status pill reflects reality even if the connection drops later
   setInterval(checkFirebaseStatus, 15000);
 }
 
@@ -147,7 +148,7 @@ async function saveScore(finalScore) {
   }
   
   try {
-    // Add score to "scores" collection
+    // Add score to "scores" collection so leaderboard can read historic runs
     await addDoc(collection(db, 'scores'), {
       userId: authUser.uid,
       userName: authUser.displayName || authUser.email || 'Unknown',
@@ -155,7 +156,7 @@ async function saveScore(finalScore) {
       timestamp: new Date().toISOString()
     });
     
-    // Update high score for user
+    // Update per-user high score document so we can show PBs later
     const userRef = doc(db, 'users', authUser.uid);
     const userDoc = await getDoc(userRef);
     const currentHigh = userDoc.exists() ? userDoc.data().highScore || 0 : 0;
@@ -190,6 +191,7 @@ async function openLeaderboard() {
         const time = data.timestamp ? new Date(data.timestamp).toLocaleString() : '—';
         const div = document.createElement('div');
         div.style.padding = '6px 0';
+        // Rank the entry using a simple counter so ties are still numbered cleanly
         div.textContent = `${i++}. ${data.userName || 'Unknown'} — Score: ${data.score} — ${time}`;
         leaderboardList.appendChild(div);
       });
@@ -215,7 +217,7 @@ const PROXY_PREFIX = 'https://api.allorigins.win/raw?url='; // Public CORS proxy
 
 async function fetchBananaPuzzle() {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout to avoid hanging UI
   try {
     // Try via proxy first (avoids CORS issues)
     const proxied = `${PROXY_PREFIX}${encodeURIComponent(BANANA_API_URL)}`;
@@ -283,7 +285,7 @@ async function showBananaPuzzle() {
 }
 
 function handleBananaAnswer() {
-  const userAnswer = parseInt(bananaAnswer.value);
+  const userAnswer = parseInt(bananaAnswer.value); // Convert string input to number once
   
   if (isNaN(userAnswer)) {
     bananaStatus.textContent = 'Please enter a valid number!';
@@ -344,7 +346,7 @@ startBtn.addEventListener('click', () => {
 
 // 🔹 Start game function
 function startGame() {
-  if (gameStarted) return; // Prevent double start
+  if (gameStarted) return; // Prevent double start from rapid clicks
   gameStarted = true;
   score = 0;
   obstaclesContainer.innerHTML = '';
@@ -371,7 +373,7 @@ function gameOver() {
   isGameOver = true;
   gameStarted = false;
   clearInterval(scoreIntervalId);
-  saveScore(score);
+  saveScore(score); // Persist run results before resetting UI
   overlay.style.display = 'block';
   overlay.innerHTML = `<h1>Game Over</h1><p>Score: ${score}</p><button id="startBtn">Restart</button>`;
   document.getElementById('startBtn').addEventListener('click', () => {
@@ -400,12 +402,12 @@ function jump() {
 function spawnObstacleLoop() {
   if (isGameOver) return;
   spawnObstacle();
-  setTimeout(spawnObstacleLoop, 2000 + Math.random() * 1500); // Random interval
+    setTimeout(spawnObstacleLoop, 2000 + Math.random() * 1500); // Random interval keeps gameplay unpredictable
 }
 
 function spawnObstacle() {
   const types = ['tire', 'rock', 'debris'];
-  const type = types[Math.floor(Math.random() * types.length)];
+  const type = types[Math.floor(Math.random() * types.length)]; // Pick a random obstacle profile
   const el = document.createElement('div');
   el.classList.add('obstacle', type);
   el.style.right = '-60px';
@@ -425,7 +427,7 @@ function gameLoop() {
     const truckRect = truckWrapper.getBoundingClientRect();
     const obsRect = o.el.getBoundingClientRect();
     
-    const tolerance = 5;
+    const tolerance = 5; // Shrink hitboxes slightly to feel fair
     const truckBox = {
       left: truckRect.left + tolerance,
       right: truckRect.right - tolerance,
@@ -441,16 +443,16 @@ function gameLoop() {
     };
     
     const hasCollision = !(truckBox.right < obsBox.left || 
-                          truckBox.left > obsBox.right || 
-                          truckBox.bottom < obsBox.top || 
-                          truckBox.top > obsBox.bottom);
+                truckBox.left > obsBox.right || 
+                truckBox.bottom < obsBox.top || 
+                truckBox.top > obsBox.bottom); // Axis-aligned bounding box overlap check
     
     if (hasCollision && !isJumping) {
       console.log('Collision detected!', { truckBox, obsBox });
       
       if (!hasUsedSecondLife) {
         isGameOver = true; // Pause game loop
-        showBananaPuzzle(); // Show puzzle for second life
+        showBananaPuzzle(); // Offer the second-life puzzle challenge
       } else {
         gameOver(); // No second life
       }
