@@ -23,10 +23,6 @@ const userName = document.getElementById('userName'); // User name display
 const signinContainer = document.getElementById('signin-container'); // Container for Sign In button
 const googleSignInBtn = document.getElementById('googleSignInBtn'); // Google sign-in button
 const signOutBtn = document.getElementById('signOutBtn'); // Sign out button
-const userSelect = document.getElementById('userSelect'); // Unused local select (Firebase-only now)
-const newUserName = document.getElementById('newUserName'); // Unused local input
-const addUserBtn = document.getElementById('addUserBtn'); // Unused local add button
-const removeUserBtn = document.getElementById('removeUserBtn'); // Unused local remove button
 const showLeaderboardBtn = document.getElementById('showLeaderboardBtn'); // Opens leaderboard modal
 const leaderboardModal = document.getElementById('leaderboardModal'); // Leaderboard modal container
 const leaderboardList = document.getElementById('leaderboardList'); // List inside leaderboard modal
@@ -76,19 +72,10 @@ function updateUI() {
     signinContainer.style.display = 'none';
     userPhoto.src = authUser.photoURL || `https://via.placeholder.com/28?text=${(authUser.displayName || 'U')[0]}`;
     userName.textContent = authUser.displayName || authUser.email || 'User';
-    // Hide local user management (Firebase-only)
-    userSelect.style.display = 'none';
-    newUserName.style.display = 'none';
-    addUserBtn.style.display = 'none';
-    removeUserBtn.style.display = 'none';
   } else {
     // Not signed in -> show sign-in button, hide profile
     userProfileEl.style.display = 'none';
     signinContainer.style.display = 'block';
-    userSelect.style.display = 'none';
-    newUserName.style.display = 'none';
-    addUserBtn.style.display = 'none';
-    removeUserBtn.style.display = 'none';
   }
 }
 
@@ -222,25 +209,56 @@ if (closeLeaderboardBtn) closeLeaderboardBtn.addEventListener('click', () => {
 });
 
 // 🔹 Banana API integration (second life puzzle)
+// Use Marc Conrad's Banana API; route through a public CORS proxy so no local Node server is needed.
+const BANANA_API_URL = 'https://marcconrad.com/uob/banana/api.php?out=json';
+const PROXY_PREFIX = 'https://api.allorigins.win/raw?url='; // Public CORS proxy
+
 async function fetchBananaPuzzle() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
   try {
-    const response = await fetch("http://localhost:3000/banana"); // Calls local proxy
+    // Try via proxy first (avoids CORS issues)
+    const proxied = `${PROXY_PREFIX}${encodeURIComponent(BANANA_API_URL)}`;
+    let response = await fetch(proxied, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+
     const data = await response.json();
-    console.log('Banana API response:', data);
+    console.log('Banana API (proxy) response:', data);
     return {
       imageUrl: data.question,
       solution: parseInt(data.solution)
     };
   } catch (error) {
-    console.error('Failed to fetch banana puzzle:', error);
-    // Fallback simple math problem
-    const a = Math.floor(Math.random() * 10) + 1;
-    const b = Math.floor(Math.random() * 10) + 1;
-    return {
-      imageUrl: null,
-      solution: a + b,
-      fallbackQuestion: `${a} + ${b} = ?`
-    };
+    console.warn('Proxy failed, trying direct Banana API:', error);
+    try {
+      // Attempt direct call (works if API sends proper CORS headers)
+      const direct = await fetch(BANANA_API_URL, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!direct.ok) throw new Error(`Direct HTTP ${direct.status}`);
+      const data = await direct.json();
+      console.log('Banana API (direct) response:', data);
+      return {
+        imageUrl: data.question,
+        solution: parseInt(data.solution)
+      };
+    } catch (error2) {
+      console.error('Failed to fetch banana puzzle:', error2);
+      // Fallback simple math problem
+      const a = Math.floor(Math.random() * 10) + 1;
+      const b = Math.floor(Math.random() * 10) + 1;
+      return {
+        imageUrl: null,
+        solution: a + b,
+        fallbackQuestion: `${a} + ${b} = ?`
+      };
+    }
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
